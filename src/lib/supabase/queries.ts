@@ -9,7 +9,7 @@ export async function getMovies(
     .from("movies")
     .select("*")
     .eq("status", status)
-    .order("release_tw", { ascending: false });
+    .order("release_tw", { ascending: false, nullsFirst: false });
 
   if (error) throw error;
   return data ?? [];
