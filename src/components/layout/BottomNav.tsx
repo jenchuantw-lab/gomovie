@@ -8,13 +8,11 @@ const NAV_ITEMS: {
   label: string;
   href: string;
   icon: string;
-  disabled?: boolean;
   isSearch?: boolean;
 }[] = [
   { label: "首頁", href: "/", icon: "home" },
-  { label: "搜尋", href: "/search", icon: "search", isSearch: true },
+  { label: "搜尋", href: "#", icon: "search", isSearch: true },
   { label: "收藏", href: "/collection", icon: "heart" },
-  { label: "我的", href: "/profile", icon: "user", disabled: true },
 ];
 
 function NavIcon({ icon, active }: { icon: string; active: boolean }) {
@@ -41,13 +39,6 @@ function NavIcon({ icon, active }: { icon: string; active: boolean }) {
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
         </svg>
       );
-    case "user":
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-      );
     default:
       return null;
   }
@@ -64,27 +55,15 @@ export default function BottomNav() {
           const isActive =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
-          if (item.disabled) {
-            return (
-              <div
-                key={item.href}
-                className="flex flex-col items-center justify-center gap-0.5 opacity-40"
-              >
-                <NavIcon icon={item.icon} active={false} />
-                <span className="text-[10px] text-text-muted">{item.label}</span>
-              </div>
-            );
-          }
-
           if (item.isSearch) {
             return (
               <button
-                key={item.href}
+                key="search"
                 onClick={open}
                 className="flex flex-col items-center justify-center gap-0.5"
               >
-                <NavIcon icon={item.icon} active={false} />
-                <span className="text-[10px] text-[#cccccc]">{item.label}</span>
+                <NavIcon icon="search" active={false} />
+                <span className="text-[10px] text-[#cccccc]">搜尋</span>
               </button>
             );
           }

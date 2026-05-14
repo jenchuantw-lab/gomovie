@@ -55,9 +55,8 @@ function ExpandPanel({ showtime }: { showtime: ShowtimeWithCinema }) {
     showtime.hall_name,
     showtime.total_seats ? `${showtime.total_seats} 席` : null,
   ].filter(Boolean);
-
   return (
-    <div className="absolute top-full left-0 mt-1 z-10 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary whitespace-nowrap shadow-sm">
+    <div className="mt-2 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary">
       {parts.length > 0 ? parts.join("・") : "一般廳"}
     </div>
   );
@@ -125,32 +124,36 @@ export default function ShowtimeQuickLook({
                 {movie.title_zh}
               </p>
               <div className="space-y-3 pl-3">
-                {cinemas.map(({ cinema, showtimes }) => (
-                  <div key={cinema.id}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-[13px] font-medium text-text-secondary">
-                        {cinema.name}
-                      </p>
-                      {cinema.website_url && (
-                        <a
-                          href={cinema.website_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] text-brand-red"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          官網 ↗
-                        </a>
-                      )}
-                    </div>
-                    {/* Chips — each in relative container so panel is absolute */}
-                    <div className="flex flex-wrap gap-2">
-                      {showtimes.map((s) => {
-                        const key = `${movie.id}-${cinema.id}-${s.id}`;
-                        const isExpanded = expandedKey === key;
-                        return (
-                          <div key={s.id} className="relative">
+                {cinemas.map(({ cinema, showtimes }) => {
+                  const expandedShowtime = showtimes.find(
+                    (s) => expandedKey === `${movie.id}-${cinema.id}-${s.id}`
+                  );
+                  return (
+                    <div key={cinema.id}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[13px] font-medium text-text-secondary">
+                          {cinema.name}
+                        </p>
+                        {cinema.website_url && (
+                          <a
+                            href={cinema.website_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-brand-red"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            官網 ↗
+                          </a>
+                        )}
+                      </div>
+                      {/* Chips row — no layout shift */}
+                      <div className="flex flex-wrap gap-2">
+                        {showtimes.map((s) => {
+                          const key = `${movie.id}-${cinema.id}-${s.id}`;
+                          const isExpanded = expandedKey === key;
+                          return (
                             <button
+                              key={s.id}
                               onClick={() =>
                                 setExpandedKey(isExpanded ? null : key)
                               }
@@ -162,13 +165,16 @@ export default function ShowtimeQuickLook({
                             >
                               {s.show_time.slice(0, 5)}
                             </button>
-                            {isExpanded && <ExpandPanel showtime={s} />}
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
+                      {/* Expand panel below chips — pushes content down */}
+                      {expandedShowtime && (
+                        <ExpandPanel showtime={expandedShowtime} />
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))

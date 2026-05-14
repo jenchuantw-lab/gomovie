@@ -17,9 +17,7 @@ export default function HomeClient({ movies, todayShowtimes }: HomeClientProps) 
 
   return (
     <main className="max-w-lg mx-auto">
-      <div className="pt-safe">
-        <AppHeader />
-      </div>
+      <AppHeader />
 
       <div className="px-4 mb-5">
         <SearchBar onOpen={open} />

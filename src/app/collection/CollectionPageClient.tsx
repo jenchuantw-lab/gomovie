@@ -18,9 +18,7 @@ export default function CollectionPageClient() {
       setLoading(false);
       return;
     }
-    const res = await fetch(`/api/movies?ids=${ids.join(",")}`).catch(
-      () => null
-    );
+    const res = await fetch(`/api/movies?ids=${ids.join(",")}`).catch(() => null);
     const data = res ? await res.json().catch(() => []) : [];
     const ordered = ids
       .map((id) => data.find((m: Movie) => m.id === id))
@@ -38,17 +36,13 @@ export default function CollectionPageClient() {
 
   return (
     <main className="max-w-lg mx-auto">
-      <div className="pt-safe">
-        <AppHeader />
-      </div>
+      <AppHeader />
       <div className="px-4 pb-3">
         <h1 className="text-[15px] font-bold text-text-primary">收藏清單</h1>
       </div>
 
       {loading ? (
-        <p className="text-center text-text-muted text-[13px] py-12">
-          載入中…
-        </p>
+        <p className="text-center text-text-muted text-[13px] py-12">載入中…</p>
       ) : movies.length === 0 ? (
         <EmptyWatchlist />
       ) : (
