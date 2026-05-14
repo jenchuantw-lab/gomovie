@@ -272,7 +272,7 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
       </div>
 
       {/* Showtimes list */}
-      <div className="px-4 mt-3 space-y-4">
+      <div className="px-4 mt-3 space-y-3">
         {loading ? (
           <p className="text-center text-text-muted text-[13px] py-6">載入中…</p>
         ) : grouped.length === 0 ? (
@@ -281,51 +281,57 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
           </p>
         ) : (
           grouped.map(({ movie, cinemas }) => (
-            <div key={movie.id}>
-              <p className="text-[15px] font-bold text-text-primary mb-2">
+            <div key={movie.id} className="bg-surface-card rounded-xl px-3 py-2.5 border border-border-default">
+              {/* Movie title */}
+              <p className="text-[13px] font-bold text-text-primary mb-2">
                 {movie.title_zh}
               </p>
-              <div className="space-y-3 pl-3">
+              {/* Cinemas — compact single-line per cinema */}
+              <div className="space-y-2">
                 {cinemas.map(({ cinema, showtimes: cs }) => {
                   const expandedShowtime = cs.find(
                     (s) => expandedKey === `${movie.id}-${cinema.id}-${s.id}`
                   );
                   return (
                     <div key={cinema.id}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-[13px] font-medium text-text-secondary">
-                          {cinema.name}
-                        </p>
-                        {cinema.website_url && (
-                          <a
-                            href={cinema.website_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] text-brand-red"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            官網 ↗
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {cs.map((s) => {
-                          const key = `${movie.id}-${cinema.id}-${s.id}`;
-                          const isExpanded = expandedKey === key;
-                          return (
-                            <button
-                              key={s.id}
-                              onClick={() => setExpandedKey(isExpanded ? null : key)}
-                              className={`px-3 py-1.5 rounded-full text-[12px] border transition-colors ${
-                                isExpanded
-                                  ? "bg-text-primary text-white border-text-primary"
-                                  : "bg-surface-muted text-text-primary border-border-default"
-                              }`}
+                      <div className="flex items-start gap-2">
+                        {/* Cinema name — fixed width, truncated */}
+                        <div className="flex items-center gap-0.5 w-[80px] flex-shrink-0 pt-1">
+                          <p className="text-[11px] text-text-muted truncate leading-tight">
+                            {cinema.name}
+                          </p>
+                          {cinema.website_url && (
+                            <a
+                              href={cinema.website_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[9px] text-brand-red flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              {s.show_time.slice(0, 5)}
-                            </button>
-                          );
-                        })}
+                              ↗
+                            </a>
+                          )}
+                        </div>
+                        {/* Time chips */}
+                        <div className="flex flex-wrap gap-1.5 flex-1">
+                          {cs.map((s) => {
+                            const key = `${movie.id}-${cinema.id}-${s.id}`;
+                            const isExpanded = expandedKey === key;
+                            return (
+                              <button
+                                key={s.id}
+                                onClick={() => setExpandedKey(isExpanded ? null : key)}
+                                className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
+                                  isExpanded
+                                    ? "bg-text-primary text-white border-text-primary"
+                                    : "bg-surface-muted text-text-primary border-border-default"
+                                }`}
+                              >
+                                {s.show_time.slice(0, 5)}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                       {expandedShowtime && <ExpandPanel showtime={expandedShowtime} />}
                     </div>
