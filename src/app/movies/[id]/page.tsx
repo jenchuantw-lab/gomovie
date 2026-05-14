@@ -65,6 +65,20 @@ export default async function MoviePage({ params }: Props) {
       <ScoreBar movie={movie} />
       {movie.synopsis && <Synopsis text={movie.synopsis} />}
 
+      {movie.trailer_url && (
+        <div className="px-4 py-3 border-b border-border-muted">
+          <a
+            href={movie.trailer_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-red text-white text-[13px] font-medium"
+          >
+            <span>▶</span>
+            <span>觀看預告片</span>
+          </a>
+        </div>
+      )}
+
       <section>
         <div className="px-4 pt-4 pb-1">
           <h2 className="text-[15px] font-bold text-text-primary">場次</h2>

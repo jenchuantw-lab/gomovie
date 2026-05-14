@@ -21,6 +21,7 @@ export interface Movie {
   imdb_score: number | null;
   rt_score: number | null;
   tw_score: number | null;
+  trailer_url: string | null;
   status: "showing" | "coming_soon" | "ended";
   created_at: string;
 }
