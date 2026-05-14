@@ -286,52 +286,49 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
               <p className="text-[13px] font-bold text-text-primary mb-2">
                 {movie.title_zh}
               </p>
-              {/* Cinemas — compact single-line per cinema */}
-              <div className="space-y-2">
+              {/* Cinemas — 2-column grid */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 {cinemas.map(({ cinema, showtimes: cs }) => {
                   const expandedShowtime = cs.find(
                     (s) => expandedKey === `${movie.id}-${cinema.id}-${s.id}`
                   );
                   return (
                     <div key={cinema.id}>
-                      <div className="flex items-start gap-2">
-                        {/* Cinema name — fixed width, truncated */}
-                        <div className="flex items-center gap-0.5 w-[80px] flex-shrink-0 pt-1">
-                          <p className="text-[11px] text-text-muted truncate leading-tight">
-                            {cinema.name}
-                          </p>
-                          {cinema.website_url && (
-                            <a
-                              href={cinema.website_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[9px] text-brand-red flex-shrink-0"
-                              onClick={(e) => e.stopPropagation()}
+                      {/* Cinema name as link */}
+                      {cinema.website_url ? (
+                        <a
+                          href={cinema.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-brand-red underline-offset-2 underline leading-tight block truncate mb-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {cinema.name}
+                        </a>
+                      ) : (
+                        <p className="text-[11px] text-text-muted leading-tight truncate mb-1">
+                          {cinema.name}
+                        </p>
+                      )}
+                      {/* Time chips */}
+                      <div className="flex flex-wrap gap-1">
+                        {cs.map((s) => {
+                          const key = `${movie.id}-${cinema.id}-${s.id}`;
+                          const isExpanded = expandedKey === key;
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => setExpandedKey(isExpanded ? null : key)}
+                              className={`px-2 py-0.5 rounded-full text-[11px] border transition-colors ${
+                                isExpanded
+                                  ? "bg-text-primary text-white border-text-primary"
+                                  : "bg-surface-muted text-text-primary border-border-default"
+                              }`}
                             >
-                              ↗
-                            </a>
-                          )}
-                        </div>
-                        {/* Time chips */}
-                        <div className="flex flex-wrap gap-1.5 flex-1">
-                          {cs.map((s) => {
-                            const key = `${movie.id}-${cinema.id}-${s.id}`;
-                            const isExpanded = expandedKey === key;
-                            return (
-                              <button
-                                key={s.id}
-                                onClick={() => setExpandedKey(isExpanded ? null : key)}
-                                className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
-                                  isExpanded
-                                    ? "bg-text-primary text-white border-text-primary"
-                                    : "bg-surface-muted text-text-primary border-border-default"
-                                }`}
-                              >
-                                {s.show_time.slice(0, 5)}
-                              </button>
-                            );
-                          })}
-                        </div>
+                              {s.show_time.slice(0, 5)}
+                            </button>
+                          );
+                        })}
                       </div>
                       {expandedShowtime && <ExpandPanel showtime={expandedShowtime} />}
                     </div>
