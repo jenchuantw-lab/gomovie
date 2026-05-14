@@ -38,20 +38,23 @@ function getUpcomingDates(count: number): Date[] {
   });
 }
 
-function formatChipLabel(date: Date, idx: number): string {
-  if (idx === 0) return "今天";
-  if (idx === 1) return "明天";
-  const days = ["日", "一", "二", "三", "四", "五", "六"];
-  return `${date.getMonth() + 1}/${date.getDate()}（${days[date.getDay()]}）`;
+const DAYS = ["日", "一", "二", "三", "四", "五", "六"];
+
+function DateChipLabel({ date, idx }: { date: Date; idx: number }) {
+  if (idx === 0) return <span>今天</span>;
+  if (idx === 1) return <span>明天</span>;
+  return (
+    <span className="flex flex-col items-center leading-tight gap-0.5">
+      <span>{date.getMonth() + 1}/{date.getDate()}</span>
+      <span className="text-[10px] opacity-80">{DAYS[date.getDay()]}</span>
+    </span>
+  );
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type ShowtimeRow = ShowtimeWithCinema & { movies: Movie };
-type CinemaGroup = {
-  cinema: ShowtimeWithCinema["cinemas"];
-  showtimes: ShowtimeRow[];
-};
+type CinemaGroup = { cinema: ShowtimeWithCinema["cinemas"]; showtimes: ShowtimeRow[] };
 type MovieGroup = { movie: Movie; cinemas: CinemaGroup[] };
 
 function groupShowtimes(rows: ShowtimeRow[]): MovieGroup[] {
@@ -70,12 +73,7 @@ function groupShowtimes(rows: ShowtimeRow[]): MovieGroup[] {
 }
 
 function ExpandPanel({ showtime }: { showtime: ShowtimeRow }) {
-  const parts = [
-    showtime.hall_type,
-    showtime.hall_name,
-    showtime.lang,
-    showtime.subtitle,
-  ].filter(Boolean);
+  const parts = [showtime.hall_type, showtime.hall_name, showtime.lang, showtime.subtitle].filter(Boolean);
   return (
     <div className="mt-2 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary">
       {parts.length > 0 ? parts.join("・") : "一般廳"}
@@ -91,7 +89,6 @@ interface Props {
 
 export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
   const todayStr = useMemo(() => toDateStr(new Date()), []);
-  const dates7 = useMemo(() => getUpcomingDates(7), []);
   const dates14 = useMemo(() => getUpcomingDates(14), []);
 
   const [showtimes, setShowtimes] = useState<ShowtimeRow[]>(initialShowtimes);
@@ -104,19 +101,47 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
   const [loading, setLoading] = useState(false);
 
   const cityRef = useRef<HTMLDivElement>(null);
-  const allDates = showNextWeek ? dates14 : dates7;
+  // In-memory cache for fetched dates
+  const cache = useRef<Map<string, ShowtimeRow[]>>(new Map());
 
-  // Fetch when date changes
+  const allDates = showNextWeek ? dates14 : dates14.slice(0, 7);
+
+  // Preload next 3 days on mount
+  useEffect(() => {
+    dates14.slice(1, 4).forEach((date) => {
+      const ds = toDateStr(date);
+      if (cache.current.has(ds)) return;
+      fetch(`/api/showtimes-by-date?date=${ds}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) cache.current.set(ds, data);
+        })
+        .catch(() => {});
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch / serve from cache when date changes
   useEffect(() => {
     if (selectedDate === todayStr) {
       setShowtimes(initialShowtimes);
+      setLoading(false);
+      return;
+    }
+    const cached = cache.current.get(selectedDate);
+    if (cached) {
+      setShowtimes(cached);
+      setLoading(false);
       return;
     }
     setLoading(true);
     setExpandedKey(null);
     fetch(`/api/showtimes-by-date?date=${selectedDate}`)
       .then((r) => r.json())
-      .then((data) => setShowtimes(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const result = Array.isArray(data) ? data : [];
+        cache.current.set(selectedDate, result);
+        setShowtimes(result);
+      })
       .catch(() => setShowtimes([]))
       .finally(() => setLoading(false));
   }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -131,7 +156,7 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [cityOpen]);
 
-  // Filter by city + time slot
+  // Filter
   const filtered = showtimes
     .filter((s) => s.cinemas.city === city)
     .filter((s) => {
@@ -143,83 +168,88 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
 
   const selectedDateLabel = (() => {
     const idx = allDates.findIndex((d) => toDateStr(d) === selectedDate);
-    return idx >= 0 ? formatChipLabel(allDates[idx], idx) : selectedDate;
+    if (idx < 0) return selectedDate;
+    if (idx === 0) return "今天";
+    if (idx === 1) return "明天";
+    const d = allDates[idx];
+    return `${d.getMonth() + 1}/${d.getDate()}（${DAYS[d.getDay()]}）`;
   })();
 
   return (
     <div>
-      {/* City dropdown */}
-      <div ref={cityRef} className="relative px-4 mb-3">
-        <button
-          onClick={() => setCityOpen((o) => !o)}
-          className="flex items-center gap-1 text-[13px] font-medium text-text-primary"
-        >
-          <span>📍</span>
-          <span>{city}</span>
-          <span className="text-[10px] text-text-muted ml-0.5">
-            {cityOpen ? "▲" : "▾"}
-          </span>
-        </button>
+      {/* Section header: title + city selector inline */}
+      <div className="flex items-center justify-between px-4 mb-3">
+        <h2 className="text-[15px] font-bold text-text-primary">場次快查</h2>
 
-        {cityOpen && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface-card border border-border-default rounded-xl shadow-lg z-10 p-3">
-            {CITY_GROUPS.map((group) => (
-              <div key={group.label} className="mb-2.5 last:mb-0">
-                <p className="text-[10px] text-text-muted font-medium mb-1.5">
-                  {group.label}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {group.cities.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => {
-                        setCity(c);
-                        setCityOpen(false);
-                        setExpandedKey(null);
-                      }}
-                      className={`px-2.5 py-1 rounded-full text-[12px] transition-colors ${
-                        city === c
-                          ? "bg-text-primary text-white"
-                          : "bg-surface-muted text-text-secondary"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
+        <div ref={cityRef} className="relative">
+          <button
+            onClick={() => setCityOpen((o) => !o)}
+            className="flex items-center gap-1 text-[13px] font-medium text-text-primary"
+          >
+            <span>📍</span>
+            <span>{city}</span>
+            <span className="text-[10px] text-text-muted ml-0.5">
+              {cityOpen ? "▲" : "▾"}
+            </span>
+          </button>
+
+          {cityOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-64 bg-surface-card border border-border-default rounded-xl shadow-lg z-10 p-3">
+              {CITY_GROUPS.map((group) => (
+                <div key={group.label} className="mb-2.5 last:mb-0">
+                  <p className="text-[10px] text-text-muted font-medium mb-1.5">
+                    {group.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.cities.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => {
+                          setCity(c);
+                          setCityOpen(false);
+                          setExpandedKey(null);
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-[12px] transition-colors ${
+                          city === c
+                            ? "bg-text-primary text-white"
+                            : "bg-surface-muted text-text-secondary"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Date chips */}
-      <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none">
+      {/* Date chips — compact two-line format */}
+      <div className="flex gap-1.5 overflow-x-auto px-4 pb-2 scrollbar-none">
         {allDates.map((date, i) => {
           const ds = toDateStr(date);
           return (
             <button
               key={ds}
-              onClick={() => {
-                setSelectedDate(ds);
-                setExpandedKey(null);
-              }}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+              onClick={() => { setSelectedDate(ds); setExpandedKey(null); }}
+              className={`flex-shrink-0 px-2.5 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
                 selectedDate === ds
                   ? "bg-text-primary text-white"
                   : "bg-surface-muted text-text-secondary"
               }`}
             >
-              {formatChipLabel(date, i)}
+              <DateChipLabel date={date} idx={i} />
             </button>
           );
         })}
         {!showNextWeek && (
           <button
             onClick={() => setShowNextWeek(true)}
-            className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] text-text-muted bg-surface-muted"
+            className="flex-shrink-0 px-2.5 py-1.5 rounded-full text-[12px] text-text-muted bg-surface-muted"
           >
-            下週 ↓
+            下週↓
           </button>
         )}
       </div>
@@ -285,9 +315,7 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
                           return (
                             <button
                               key={s.id}
-                              onClick={() =>
-                                setExpandedKey(isExpanded ? null : key)
-                              }
+                              onClick={() => setExpandedKey(isExpanded ? null : key)}
                               className={`px-3 py-1.5 rounded-full text-[12px] border transition-colors ${
                                 isExpanded
                                   ? "bg-text-primary text-white border-text-primary"
@@ -299,9 +327,7 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
                           );
                         })}
                       </div>
-                      {expandedShowtime && (
-                        <ExpandPanel showtime={expandedShowtime} />
-                      )}
+                      {expandedShowtime && <ExpandPanel showtime={expandedShowtime} />}
                     </div>
                   );
                 })}

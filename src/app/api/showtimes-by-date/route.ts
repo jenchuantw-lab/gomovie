@@ -10,5 +10,9 @@ export async function GET(req: NextRequest) {
   }
 
   const data = await getShowtimesByDate(date).catch(() => []);
-  return NextResponse.json(data);
+  return NextResponse.json(data, {
+    headers: {
+      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+    },
+  });
 }
