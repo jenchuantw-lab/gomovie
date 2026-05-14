@@ -44,15 +44,13 @@ export async function getShowtimes(
 }
 
 export async function getShowtimesByDate(
-  date: string,
-  city: string = "台北市"
+  date: string
 ): Promise<(ShowtimeWithCinema & { movies: Movie })[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("showtimes")
-    .select("*, cinemas!inner(*), movies(*)")
+    .select("*, cinemas(*), movies(*)")
     .eq("show_date", date)
-    .eq("cinemas.city", city)
     .order("show_time", { ascending: true });
 
   if (error) throw error;
