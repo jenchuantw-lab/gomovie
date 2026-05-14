@@ -36,7 +36,7 @@ export default function CollectionPageClient() {
 
   return (
     <main className="max-w-lg mx-auto">
-      <AppHeader />
+      <AppHeader showBack />
       <div className="px-4 pb-3">
         <h1 className="text-[15px] font-bold text-text-primary">收藏清單</h1>
       </div>
