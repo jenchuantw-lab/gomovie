@@ -91,10 +91,20 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
   const todayStr = useMemo(() => toDateStr(new Date()), []);
   const dates14 = useMemo(() => getUpcomingDates(14), []);
 
+  // Derive available cities from actual data
+  const availableCities = useMemo(() => {
+    const set = new Set(initialShowtimes.map((s) => s.cinemas.city).filter(Boolean));
+    // Sort by CITY_GROUPS order so 熱門 cities appear first
+    const order = CITY_GROUPS.flatMap((g) => g.cities);
+    return Array.from(set).sort(
+      (a, b) => (order.indexOf(a) ?? 99) - (order.indexOf(b) ?? 99)
+    );
+  }, [initialShowtimes]);
+
   const [showtimes, setShowtimes] = useState<ShowtimeRow[]>(initialShowtimes);
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [showNextWeek, setShowNextWeek] = useState(false);
-  const [city, setCity] = useState("台北市");
+  const [city, setCity] = useState(() => availableCities[0] ?? "台北市");
   const [cityOpen, setCityOpen] = useState(false);
   const [timeSlot, setTimeSlot] = useState("全天");
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -183,44 +193,51 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
 
         <div ref={cityRef} className="relative">
           <button
-            onClick={() => setCityOpen((o) => !o)}
+            onClick={() => availableCities.length > 1 && setCityOpen((o) => !o)}
             className="flex items-center gap-1 text-[13px] font-medium text-text-primary"
           >
             <span>📍</span>
             <span>{city}</span>
-            <span className="text-[10px] text-text-muted ml-0.5">
-              {cityOpen ? "▲" : "▾"}
-            </span>
+            {availableCities.length > 1 && (
+              <span className="text-[10px] text-text-muted ml-0.5">
+                {cityOpen ? "▲" : "▾"}
+              </span>
+            )}
           </button>
 
-          {cityOpen && (
+          {cityOpen && availableCities.length > 1 && (
             <div className="absolute right-0 top-full mt-1.5 w-64 bg-surface-card border border-border-default rounded-xl shadow-lg z-10 p-3">
-              {CITY_GROUPS.map((group) => (
-                <div key={group.label} className="mb-2.5 last:mb-0">
-                  <p className="text-[10px] text-text-muted font-medium mb-1.5">
-                    {group.label}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {group.cities.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => {
-                          setCity(c);
-                          setCityOpen(false);
-                          setExpandedKey(null);
-                        }}
-                        className={`px-2.5 py-1 rounded-full text-[12px] transition-colors ${
-                          city === c
-                            ? "bg-text-primary text-white"
-                            : "bg-surface-muted text-text-secondary"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
+              {CITY_GROUPS.filter((g) =>
+                g.cities.some((c) => availableCities.includes(c))
+              ).map((group) => {
+                const cities = group.cities.filter((c) => availableCities.includes(c));
+                return (
+                  <div key={group.label} className="mb-2.5 last:mb-0">
+                    <p className="text-[10px] text-text-muted font-medium mb-1.5">
+                      {group.label}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {cities.map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => {
+                            setCity(c);
+                            setCityOpen(false);
+                            setExpandedKey(null);
+                          }}
+                          className={`px-2.5 py-1 rounded-full text-[12px] transition-colors ${
+                            city === c
+                              ? "bg-text-primary text-white"
+                              : "bg-surface-muted text-text-secondary"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
