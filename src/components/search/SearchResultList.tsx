@@ -38,9 +38,9 @@ export default function SearchResultList({ movies }: { movies: Movie[] }) {
     <ul>
       {movies.map((movie) => {
         const meta = [
-          movie.release_year,
+          movie.release_tw?.slice(0, 4),
           movie.duration_minutes ? `${movie.duration_minutes} 分` : null,
-          movie.genre?.slice(0, 2).join("・"),
+          movie.genres?.slice(0, 2).join("・"),
         ]
           .filter(Boolean)
           .join("・");

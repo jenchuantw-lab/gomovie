@@ -51,9 +51,10 @@ function groupShowtimes(
 
 function ExpandPanel({ showtime }: { showtime: ShowtimeWithCinema }) {
   const parts = [
-    showtime.hall_feature,
+    showtime.hall_type,
     showtime.hall_name,
-    showtime.total_seats ? `${showtime.total_seats} 席` : null,
+    showtime.lang,
+    showtime.subtitle,
   ].filter(Boolean);
   return (
     <div className="mt-2 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary">

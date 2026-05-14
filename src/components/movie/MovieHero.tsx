@@ -4,9 +4,9 @@ import HeartButton from "@/components/shared/HeartButton";
 
 export default function MovieHero({ movie }: { movie: Movie }) {
   const meta = [
-    movie.release_year,
+    movie.release_tw ? movie.release_tw.slice(0, 4) : null,
     movie.duration_minutes ? `${movie.duration_minutes} 分鐘` : null,
-    movie.genre?.join("・"),
+    movie.genres?.join("・"),
   ]
     .filter(Boolean)
     .join("・");

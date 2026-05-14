@@ -9,7 +9,7 @@ export async function getMovies(
     .from("movies")
     .select("*")
     .eq("status", status)
-    .order("created_at", { ascending: false });
+    .order("release_tw", { ascending: false });
 
   if (error) throw error;
   return data ?? [];
@@ -71,15 +71,29 @@ export async function searchMovies(query: string): Promise<Movie[]> {
 
 export async function getHotMovies(limit: number = 10): Promise<Movie[]> {
   const supabase = await createClient();
+  // 取有近期場次的電影（今天起 7 天內）
+  const today = new Date().toISOString().split("T")[0];
+  const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+
   const { data, error } = await supabase
-    .from("movies")
-    .select("*")
-    .eq("status", "showing")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .from("showtimes")
+    .select("movie_id, movies(*)")
+    .gte("show_date", today)
+    .lte("show_date", nextWeek)
+    .limit(limit * 5); // 取多一些再去重
 
   if (error) throw error;
-  return data ?? [];
+
+  const seen = new Set<string>();
+  const movies: Movie[] = [];
+  for (const row of data ?? []) {
+    if (!seen.has(row.movie_id) && row.movies) {
+      seen.add(row.movie_id);
+      movies.push(row.movies as unknown as Movie);
+      if (movies.length >= limit) break;
+    }
+  }
+  return movies;
 }
 
 export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {

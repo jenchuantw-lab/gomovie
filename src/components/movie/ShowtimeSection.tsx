@@ -33,11 +33,11 @@ export default function ShowtimeSection({
       .finally(() => setLoading(false));
   }, [date, movieId, initialDate]);
 
-  // Extract available hall features
+  // Extract available hall types
   const availableVersions = Array.from(
     new Set(
       allShowtimes
-        .map((s) => s.hall_feature)
+        .map((s) => s.hall_type)
         .filter((f): f is string => !!f)
     )
   );
@@ -46,7 +46,7 @@ export default function ShowtimeSection({
   const filtered =
     selectedVersion === "全部"
       ? allShowtimes
-      : allShowtimes.filter((s) => s.hall_feature === selectedVersion);
+      : allShowtimes.filter((s) => s.hall_type === selectedVersion);
 
   // Group by cinema
   const cinemaMap = new Map<

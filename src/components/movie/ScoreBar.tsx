@@ -9,10 +9,10 @@ interface ScoreItem {
 
 export default function ScoreBar({ movie }: { movie: Movie }) {
   const scores: ScoreItem[] = [
-    movie.imdb_score != null && {
+    movie.rating_imdb != null && {
       icon: "⭐",
       label: "IMDb",
-      value: String(movie.imdb_score),
+      value: String(movie.rating_imdb),
       color: "text-yellow-500",
     },
     movie.rt_score != null && {

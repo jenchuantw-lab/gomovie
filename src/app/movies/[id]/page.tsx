@@ -36,15 +36,15 @@ export default async function MoviePage({ params }: Props) {
     alternateName: movie.title_en,
     description: movie.synopsis,
     image: movie.poster_url,
-    dateCreated: movie.release_year?.toString(),
+    dateCreated: movie.release_tw?.slice(0, 4),
     duration: movie.duration_minutes
       ? `PT${movie.duration_minutes}M`
       : undefined,
-    genre: movie.genre,
-    aggregateRating: movie.imdb_score
+    genre: movie.genres,
+    aggregateRating: movie.rating_imdb
       ? {
           "@type": "AggregateRating",
-          ratingValue: movie.imdb_score,
+          ratingValue: movie.rating_imdb,
           ratingCount: 1000,
           bestRating: 10,
         }
