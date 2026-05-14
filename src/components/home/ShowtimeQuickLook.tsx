@@ -1,55 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { Movie, ShowtimeWithCinema } from "@/types";
 
-type GroupedShowtime = {
-  movie: Movie;
-  cinemas: {
-    cinema: ShowtimeWithCinema["cinemas"];
-    showtimes: ShowtimeWithCinema[];
-  }[];
-};
+// ── City data ────────────────────────────────────────────────────────────────
 
-function getWeekDates(): Date[] {
-  const dates: Date[] = [];
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    dates.push(d);
-  }
-  return dates;
+const CITY_GROUPS = [
+  { label: "熱門", cities: ["台北市", "新北市", "桃園市", "台中市", "台南市", "高雄市"] },
+  { label: "北部", cities: ["基隆市", "新竹市", "新竹縣", "宜蘭縣"] },
+  { label: "中部", cities: ["苗栗縣", "彰化縣", "南投縣", "雲林縣"] },
+  { label: "南部", cities: ["嘉義市", "嘉義縣", "屏東縣"] },
+  { label: "東部", cities: ["花蓮縣", "台東縣"] },
+];
+
+const TIME_SLOTS = [
+  { label: "全天", check: (_: string) => true },
+  { label: "上午", check: (t: string) => t < "12:00" },
+  { label: "下午", check: (t: string) => t >= "12:00" && t < "17:00" },
+  { label: "晚上", check: (t: string) => t >= "17:00" },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function toDateStr(d: Date): string {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
-function formatDateLabel(date: Date, index: number): string {
-  if (index === 0) return "今天";
-  if (index === 1) return "明天";
+function getUpcomingDates(count: number): Date[] {
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+}
+
+function formatChipLabel(date: Date, idx: number): string {
+  if (idx === 0) return "今天";
+  if (idx === 1) return "明天";
   const days = ["日", "一", "二", "三", "四", "五", "六"];
   return `${date.getMonth() + 1}/${date.getDate()}（${days[date.getDay()]}）`;
 }
 
-function groupShowtimes(
-  showtimes: (ShowtimeWithCinema & { movies: Movie })[]
-): GroupedShowtime[] {
-  const movieMap = new Map<string, GroupedShowtime>();
-  for (const s of showtimes) {
-    const movie = s.movies;
-    if (!movieMap.has(movie.id)) {
-      movieMap.set(movie.id, { movie, cinemas: [] });
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type ShowtimeRow = ShowtimeWithCinema & { movies: Movie };
+type CinemaGroup = {
+  cinema: ShowtimeWithCinema["cinemas"];
+  showtimes: ShowtimeRow[];
+};
+type MovieGroup = { movie: Movie; cinemas: CinemaGroup[] };
+
+function groupShowtimes(rows: ShowtimeRow[]): MovieGroup[] {
+  const map = new Map<string, MovieGroup>();
+  for (const s of rows) {
+    if (!map.has(s.movies.id)) map.set(s.movies.id, { movie: s.movies, cinemas: [] });
+    const mg = map.get(s.movies.id)!;
+    let cg = mg.cinemas.find((c) => c.cinema.id === s.cinemas.id);
+    if (!cg) {
+      cg = { cinema: s.cinemas, showtimes: [] };
+      mg.cinemas.push(cg);
     }
-    const group = movieMap.get(movie.id)!;
-    const cinemaGroup = group.cinemas.find((c) => c.cinema.id === s.cinemas.id);
-    if (cinemaGroup) {
-      cinemaGroup.showtimes.push(s);
-    } else {
-      group.cinemas.push({ cinema: s.cinemas, showtimes: [s] });
-    }
+    cg.showtimes.push(s);
   }
-  return Array.from(movieMap.values());
+  return Array.from(map.values());
 }
 
-function ExpandPanel({ showtime }: { showtime: ShowtimeWithCinema }) {
+function ExpandPanel({ showtime }: { showtime: ShowtimeRow }) {
   const parts = [
     showtime.hall_type,
     showtime.hall_name,
@@ -63,45 +83,137 @@ function ExpandPanel({ showtime }: { showtime: ShowtimeWithCinema }) {
   );
 }
 
-interface ShowtimeQuickLookProps {
-  initialShowtimes: (ShowtimeWithCinema & { movies: Movie })[];
+// ── Component ────────────────────────────────────────────────────────────────
+
+interface Props {
+  initialShowtimes: ShowtimeRow[];
 }
 
-export default function ShowtimeQuickLook({
-  initialShowtimes,
-}: ShowtimeQuickLookProps) {
-  const dates = getWeekDates();
-  const [selectedDate, setSelectedDate] = useState(0);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
+  const todayStr = useMemo(() => toDateStr(new Date()), []);
+  const dates7 = useMemo(() => getUpcomingDates(7), []);
+  const dates14 = useMemo(() => getUpcomingDates(14), []);
+
+  const [showtimes, setShowtimes] = useState<ShowtimeRow[]>(initialShowtimes);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [showNextWeek, setShowNextWeek] = useState(false);
+  const [city, setCity] = useState("台北市");
+  const [cityOpen, setCityOpen] = useState(false);
+  const [timeSlot, setTimeSlot] = useState("全天");
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const grouped = groupShowtimes(initialShowtimes);
+  const cityRef = useRef<HTMLDivElement>(null);
+  const allDates = showNextWeek ? dates14 : dates7;
 
-  const nextWeekDates: Date[] = [];
-  for (let i = 7; i < 14; i++) {
-    const d = new Date();
-    d.setDate(new Date().getDate() + i);
-    nextWeekDates.push(d);
-  }
-  const allDates = showNextWeek ? [...dates, ...nextWeekDates] : dates;
+  // Fetch when date changes
+  useEffect(() => {
+    if (selectedDate === todayStr) {
+      setShowtimes(initialShowtimes);
+      return;
+    }
+    setLoading(true);
+    setExpandedKey(null);
+    fetch(`/api/showtimes-by-date?date=${selectedDate}`)
+      .then((r) => r.json())
+      .then((data) => setShowtimes(Array.isArray(data) ? data : []))
+      .catch(() => setShowtimes([]))
+      .finally(() => setLoading(false));
+  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Click outside → close city dropdown
+  useEffect(() => {
+    if (!cityOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!cityRef.current?.contains(e.target as Node)) setCityOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [cityOpen]);
+
+  // Filter by city + time slot
+  const filtered = showtimes
+    .filter((s) => s.cinemas.city === city)
+    .filter((s) => {
+      const t = s.show_time.slice(0, 5);
+      return TIME_SLOTS.find((sl) => sl.label === timeSlot)?.check(t) ?? true;
+    });
+
+  const grouped = groupShowtimes(filtered);
+
+  const selectedDateLabel = (() => {
+    const idx = allDates.findIndex((d) => toDateStr(d) === selectedDate);
+    return idx >= 0 ? formatChipLabel(allDates[idx], idx) : selectedDate;
+  })();
 
   return (
     <div>
-      {/* Date picker */}
+      {/* City dropdown */}
+      <div ref={cityRef} className="relative px-4 mb-3">
+        <button
+          onClick={() => setCityOpen((o) => !o)}
+          className="flex items-center gap-1 text-[13px] font-medium text-text-primary"
+        >
+          <span>📍</span>
+          <span>{city}</span>
+          <span className="text-[10px] text-text-muted ml-0.5">
+            {cityOpen ? "▲" : "▾"}
+          </span>
+        </button>
+
+        {cityOpen && (
+          <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface-card border border-border-default rounded-xl shadow-lg z-10 p-3">
+            {CITY_GROUPS.map((group) => (
+              <div key={group.label} className="mb-2.5 last:mb-0">
+                <p className="text-[10px] text-text-muted font-medium mb-1.5">
+                  {group.label}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.cities.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        setCity(c);
+                        setCityOpen(false);
+                        setExpandedKey(null);
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-[12px] transition-colors ${
+                        city === c
+                          ? "bg-text-primary text-white"
+                          : "bg-surface-muted text-text-secondary"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Date chips */}
       <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none">
-        {allDates.map((date, i) => (
-          <button
-            key={i}
-            onClick={() => setSelectedDate(i)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
-              selectedDate === i
-                ? "bg-text-primary text-white"
-                : "bg-surface-muted text-text-secondary"
-            }`}
-          >
-            {formatDateLabel(date, i)}
-          </button>
-        ))}
+        {allDates.map((date, i) => {
+          const ds = toDateStr(date);
+          return (
+            <button
+              key={ds}
+              onClick={() => {
+                setSelectedDate(ds);
+                setExpandedKey(null);
+              }}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+                selectedDate === ds
+                  ? "bg-text-primary text-white"
+                  : "bg-surface-muted text-text-secondary"
+              }`}
+            >
+              {formatChipLabel(date, i)}
+            </button>
+          );
+        })}
         {!showNextWeek && (
           <button
             onClick={() => setShowNextWeek(true)}
@@ -112,11 +224,30 @@ export default function ShowtimeQuickLook({
         )}
       </div>
 
-      {/* Showtimes */}
+      {/* Time filter chips */}
+      <div className="flex gap-1.5 px-4 mt-2">
+        {TIME_SLOTS.map(({ label }) => (
+          <button
+            key={label}
+            onClick={() => setTimeSlot(label)}
+            className={`px-2.5 py-1 rounded-full text-[11px] transition-colors ${
+              timeSlot === label
+                ? "bg-text-primary text-white"
+                : "bg-surface-muted text-text-secondary"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Showtimes list */}
       <div className="px-4 mt-3 space-y-4">
-        {grouped.length === 0 ? (
+        {loading ? (
+          <p className="text-center text-text-muted text-[13px] py-6">載入中…</p>
+        ) : grouped.length === 0 ? (
           <p className="text-center text-text-muted text-[13px] py-6">
-            {formatDateLabel(allDates[selectedDate], selectedDate)} 沒有場次資料
+            {city}・{selectedDateLabel} 沒有場次資料
           </p>
         ) : (
           grouped.map(({ movie, cinemas }) => (
@@ -125,8 +256,8 @@ export default function ShowtimeQuickLook({
                 {movie.title_zh}
               </p>
               <div className="space-y-3 pl-3">
-                {cinemas.map(({ cinema, showtimes }) => {
-                  const expandedShowtime = showtimes.find(
+                {cinemas.map(({ cinema, showtimes: cs }) => {
+                  const expandedShowtime = cs.find(
                     (s) => expandedKey === `${movie.id}-${cinema.id}-${s.id}`
                   );
                   return (
@@ -147,9 +278,8 @@ export default function ShowtimeQuickLook({
                           </a>
                         )}
                       </div>
-                      {/* Chips row — no layout shift */}
                       <div className="flex flex-wrap gap-2">
-                        {showtimes.map((s) => {
+                        {cs.map((s) => {
                           const key = `${movie.id}-${cinema.id}-${s.id}`;
                           const isExpanded = expandedKey === key;
                           return (
@@ -169,7 +299,6 @@ export default function ShowtimeQuickLook({
                           );
                         })}
                       </div>
-                      {/* Expand panel below chips — pushes content down */}
                       {expandedShowtime && (
                         <ExpandPanel showtime={expandedShowtime} />
                       )}
