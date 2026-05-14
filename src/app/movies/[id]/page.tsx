@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getMovie, getShowtimes } from "@/lib/supabase/queries";
+import AppHeader from "@/components/layout/AppHeader";
 import MovieHero from "@/components/movie/MovieHero";
 import ScoreBar from "@/components/movie/ScoreBar";
 import Synopsis from "@/components/movie/Synopsis";
@@ -57,9 +58,11 @@ export default async function MoviePage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaOrg) }}
       />
 
+      {/* Header with back button */}
+      <AppHeader showBack />
+
       <MovieHero movie={movie} />
       <ScoreBar movie={movie} />
-
       {movie.synopsis && <Synopsis text={movie.synopsis} />}
 
       <section>

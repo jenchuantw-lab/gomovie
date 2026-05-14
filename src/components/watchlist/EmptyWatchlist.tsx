@@ -20,10 +20,10 @@ export default function EmptyWatchlist() {
         還沒有收藏的電影
       </p>
       <p className="text-[13px] text-text-muted mb-6 leading-relaxed">
-        搜尋喜歡的片名，點愛心加入想看清單
+        搜尋喜歡的片名，點愛心加入收藏清單
       </p>
       <Link
-        href="/search"
+        href="/"
         className="px-6 py-2.5 bg-brand-red text-white rounded-full text-[14px] font-medium"
       >
         去搜尋電影

@@ -1,9 +1,5 @@
-import WatchlistPageClient from "./WatchlistPageClient";
-
-export const metadata = {
-  title: "想看清單 | GoMovie",
-};
+import { redirect } from "next/navigation";
 
 export default function WatchlistPage() {
-  return <WatchlistPageClient />;
+  redirect("/collection");
 }

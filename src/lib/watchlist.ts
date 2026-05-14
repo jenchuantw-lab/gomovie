@@ -1,4 +1,4 @@
-const STORAGE_KEY = "gomovie_watchlist";
+const STORAGE_KEY = "gomovie_collection";
 
 export const getWatchlist = (): string[] => {
   if (typeof window === "undefined") return [];

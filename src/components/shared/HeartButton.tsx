@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { isInWatchlist, toggleWatchlist } from "@/lib/watchlist";
+import { useToast } from "@/context/ToastContext";
 
 export default function HeartButton({
   movieId,
@@ -13,9 +14,16 @@ export default function HeartButton({
   className?: string;
 }) {
   const [saved, setSaved] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     setSaved(isInWatchlist(movieId));
+  }, [movieId]);
+
+  useEffect(() => {
+    const handler = () => setSaved(isInWatchlist(movieId));
+    window.addEventListener("watchlist-change", handler);
+    return () => window.removeEventListener("watchlist-change", handler);
   }, [movieId]);
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -23,11 +31,16 @@ export default function HeartButton({
     e.stopPropagation();
     const newState = toggleWatchlist(movieId);
     setSaved(newState);
+    showToast(newState ? "已加入收藏" : "已移除收藏");
     window.dispatchEvent(new CustomEvent("watchlist-change"));
   };
 
   return (
-    <button onClick={handleToggle} className={`${className}`} aria-label={saved ? "從想看清單移除" : "加入想看清單"}>
+    <button
+      onClick={handleToggle}
+      className={className}
+      aria-label={saved ? "從收藏移除" : "加入收藏"}
+    >
       <svg
         width={size}
         height={size}

@@ -16,7 +16,7 @@ function ExpandPanel({ showtime }: { showtime: ShowtimeWithCinema }) {
   ].filter(Boolean);
 
   return (
-    <div className="mt-1.5 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary">
+    <div className="absolute top-full left-0 mt-1 z-10 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary whitespace-nowrap shadow-sm">
       {parts.length > 0 ? parts.join("・") : "一般廳"}
     </div>
   );
@@ -67,11 +67,9 @@ export default function CinemaShowtimes({
               const key = `${cinema.id}-${s.id}`;
               const isExpanded = expandedKey === key;
               return (
-                <div key={s.id}>
+                <div key={s.id} className="relative">
                   <button
-                    onClick={() =>
-                      setExpandedKey(isExpanded ? null : key)
-                    }
+                    onClick={() => setExpandedKey(isExpanded ? null : key)}
                     className={`px-3 py-1.5 rounded-full text-[12px] border transition-colors ${
                       isExpanded
                         ? "bg-text-primary text-white border-text-primary"

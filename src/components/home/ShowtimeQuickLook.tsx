@@ -22,10 +22,6 @@ function getWeekDates(): Date[] {
   return dates;
 }
 
-function formatDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function formatDateLabel(date: Date, index: number): string {
   if (index === 0) return "今天";
   if (index === 1) return "明天";
@@ -37,23 +33,19 @@ function groupShowtimes(
   showtimes: (ShowtimeWithCinema & { movies: Movie })[]
 ): GroupedShowtime[] {
   const movieMap = new Map<string, GroupedShowtime>();
-
   for (const s of showtimes) {
     const movie = s.movies;
     if (!movieMap.has(movie.id)) {
       movieMap.set(movie.id, { movie, cinemas: [] });
     }
     const group = movieMap.get(movie.id)!;
-    const cinemaGroup = group.cinemas.find(
-      (c) => c.cinema.id === s.cinemas.id
-    );
+    const cinemaGroup = group.cinemas.find((c) => c.cinema.id === s.cinemas.id);
     if (cinemaGroup) {
       cinemaGroup.showtimes.push(s);
     } else {
       group.cinemas.push({ cinema: s.cinemas, showtimes: [s] });
     }
   }
-
   return Array.from(movieMap.values());
 }
 
@@ -65,7 +57,7 @@ function ExpandPanel({ showtime }: { showtime: ShowtimeWithCinema }) {
   ].filter(Boolean);
 
   return (
-    <div className="mt-1 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary">
+    <div className="absolute top-full left-0 mt-1 z-10 px-3 py-2 bg-surface-hover rounded-lg text-[12px] text-text-secondary whitespace-nowrap shadow-sm">
       {parts.length > 0 ? parts.join("・") : "一般廳"}
     </div>
   );
@@ -91,29 +83,25 @@ export default function ShowtimeQuickLook({
     d.setDate(new Date().getDate() + i);
     nextWeekDates.push(d);
   }
-
   const allDates = showNextWeek ? [...dates, ...nextWeekDates] : dates;
 
   return (
     <div>
       {/* Date picker */}
       <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none">
-        {allDates.map((date, i) => {
-          const isSelected = selectedDate === i;
-          return (
-            <button
-              key={i}
-              onClick={() => setSelectedDate(i)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
-                isSelected
-                  ? "bg-text-primary text-white"
-                  : "bg-surface-muted text-text-secondary"
-              }`}
-            >
-              {formatDateLabel(date, i)}
-            </button>
-          );
-        })}
+        {allDates.map((date, i) => (
+          <button
+            key={i}
+            onClick={() => setSelectedDate(i)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+              selectedDate === i
+                ? "bg-text-primary text-white"
+                : "bg-surface-muted text-text-secondary"
+            }`}
+          >
+            {formatDateLabel(date, i)}
+          </button>
+        ))}
         {!showNextWeek && (
           <button
             onClick={() => setShowNextWeek(true)}
@@ -124,7 +112,7 @@ export default function ShowtimeQuickLook({
         )}
       </div>
 
-      {/* Showtimes grouped by movie */}
+      {/* Showtimes */}
       <div className="px-4 mt-3 space-y-4">
         {grouped.length === 0 ? (
           <p className="text-center text-text-muted text-[13px] py-6">
@@ -155,12 +143,13 @@ export default function ShowtimeQuickLook({
                         </a>
                       )}
                     </div>
+                    {/* Chips — each in relative container so panel is absolute */}
                     <div className="flex flex-wrap gap-2">
                       {showtimes.map((s) => {
                         const key = `${movie.id}-${cinema.id}-${s.id}`;
                         const isExpanded = expandedKey === key;
                         return (
-                          <div key={s.id}>
+                          <div key={s.id} className="relative">
                             <button
                               onClick={() =>
                                 setExpandedKey(isExpanded ? null : key)

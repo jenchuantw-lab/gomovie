@@ -2,26 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSearch } from "@/context/SearchContext";
 
 const NAV_ITEMS: {
   label: string;
   href: string;
   icon: string;
   disabled?: boolean;
+  isSearch?: boolean;
 }[] = [
   { label: "首頁", href: "/", icon: "home" },
-  { label: "搜尋", href: "/search", icon: "search" },
-  { label: "想看", href: "/watchlist", icon: "heart" },
+  { label: "搜尋", href: "/search", icon: "search", isSearch: true },
+  { label: "收藏", href: "/collection", icon: "heart" },
   { label: "我的", href: "/profile", icon: "user", disabled: true },
 ];
 
-function NavIcon({
-  icon,
-  active,
-}: {
-  icon: string;
-  active: boolean;
-}) {
+function NavIcon({ icon, active }: { icon: string; active: boolean }) {
   const color = active ? "#1a1814" : "#cccccc";
 
   switch (icon) {
@@ -59,15 +55,14 @@ function NavIcon({
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { open } = useSearch();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface-card border-t border-border-default">
       <div className="flex justify-around items-center h-14 max-w-lg mx-auto">
         {NAV_ITEMS.map((item) => {
           const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
+            item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
           if (item.disabled) {
             return (
@@ -76,10 +71,21 @@ export default function BottomNav() {
                 className="flex flex-col items-center justify-center gap-0.5 opacity-40"
               >
                 <NavIcon icon={item.icon} active={false} />
-                <span className="text-[10px] text-text-muted">
-                  {item.label}
-                </span>
+                <span className="text-[10px] text-text-muted">{item.label}</span>
               </div>
+            );
+          }
+
+          if (item.isSearch) {
+            return (
+              <button
+                key={item.href}
+                onClick={open}
+                className="flex flex-col items-center justify-center gap-0.5"
+              >
+                <NavIcon icon={item.icon} active={false} />
+                <span className="text-[10px] text-[#cccccc]">{item.label}</span>
+              </button>
             );
           }
 
@@ -92,9 +98,7 @@ export default function BottomNav() {
               <NavIcon icon={item.icon} active={isActive} />
               <span
                 className={`text-[10px] ${
-                  isActive
-                    ? "text-text-primary font-medium"
-                    : "text-[#cccccc]"
+                  isActive ? "text-text-primary font-medium" : "text-[#cccccc]"
                 }`}
               >
                 {item.label}
