@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getMovie, getShowtimes } from "@/lib/supabase/queries";
+import { getMovie, getShowtimes, getNextShowtimeDate } from "@/lib/supabase/queries";
 import AppHeader from "@/components/layout/AppHeader";
 import MovieHero from "@/components/movie/MovieHero";
 import ScoreBar from "@/components/movie/ScoreBar";
@@ -27,7 +27,18 @@ export default async function MoviePage({ params }: Props) {
   if (!movie) notFound();
 
   const today = new Date().toISOString().split("T")[0];
-  const showtimes = await getShowtimes(id, today).catch(() => []);
+  let showtimes = await getShowtimes(id, today).catch(() => []);
+  let initialDate = today;
+  let isAutoAdvanced = false;
+
+  if (showtimes.length === 0) {
+    const nextDate = await getNextShowtimeDate(id).catch(() => null);
+    if (nextDate && nextDate !== today) {
+      initialDate = nextDate;
+      isAutoAdvanced = true;
+      showtimes = await getShowtimes(id, nextDate).catch(() => []);
+    }
+  }
 
   const schemaOrg = {
     "@context": "https://schema.org",
@@ -65,20 +76,6 @@ export default async function MoviePage({ params }: Props) {
       <ScoreBar movie={movie} />
       {movie.synopsis && <Synopsis text={movie.synopsis} />}
 
-      {movie.trailer_url && (
-        <div className="px-4 py-3 border-b border-border-muted">
-          <a
-            href={movie.trailer_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-red text-white text-[13px] font-medium"
-          >
-            <span>▶</span>
-            <span>觀看預告片</span>
-          </a>
-        </div>
-      )}
-
       <section>
         <div className="px-4 pt-4 pb-1">
           <h2 className="text-[15px] font-bold text-text-primary">場次</h2>
@@ -86,7 +83,8 @@ export default async function MoviePage({ params }: Props) {
         <ShowtimeSection
           movieId={id}
           initialShowtimes={showtimes}
-          initialDate={today}
+          initialDate={initialDate}
+          isAutoAdvanced={isAutoAdvanced}
         />
       </section>
     </main>

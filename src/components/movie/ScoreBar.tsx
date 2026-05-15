@@ -29,10 +29,10 @@ export default function ScoreBar({ movie }: { movie: Movie }) {
     },
   ].filter(Boolean) as ScoreItem[];
 
-  if (scores.length === 0) return null;
+  if (scores.length === 0 && !movie.trailer_url) return null;
 
   return (
-    <div className="px-4 py-3 border-b border-border-muted">
+    <div className="px-4 py-3">
       <div className="flex items-center gap-4 flex-wrap">
         {scores.map((item, i) => (
           <span key={i} className="flex items-center gap-1 text-[13px]">
@@ -41,6 +41,17 @@ export default function ScoreBar({ movie }: { movie: Movie }) {
             <span className="text-text-primary font-medium">{item.value}</span>
           </span>
         ))}
+        {movie.trailer_url && (
+          <a
+            href={movie.trailer_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[13px] font-medium text-brand-red"
+          >
+            <span>▶</span>
+            <span>預告片</span>
+          </a>
+        )}
       </div>
     </div>
   );

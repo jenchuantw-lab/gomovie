@@ -1,12 +1,13 @@
 import Image from "next/image";
 import type { Movie } from "@/types";
 import HeartButton from "@/components/shared/HeartButton";
+import { toZhGenre } from "@/lib/genres";
 
 export default function MovieHero({ movie }: { movie: Movie }) {
   const meta = [
     movie.release_tw ? movie.release_tw.slice(0, 4) : null,
     movie.duration_minutes ? `${movie.duration_minutes} 分鐘` : null,
-    movie.genres?.join("・"),
+    movie.genres?.map(toZhGenre).join("・"),
   ]
     .filter(Boolean)
     .join("・");

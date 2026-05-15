@@ -107,3 +107,50 @@ export async function getMoviesByIds(ids: string[]): Promise<Movie[]> {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function getMoviesWithShowtimes(limit = 50): Promise<Movie[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+  const twoWeeks = new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
+
+  const { data: stData } = await supabase
+    .from("showtimes")
+    .select("movie_id")
+    .gte("show_date", today)
+    .lte("show_date", twoWeeks);
+
+  if (!stData?.length) return [];
+
+  const freq = new Map<string, number>();
+  for (const { movie_id } of stData) {
+    freq.set(movie_id, (freq.get(movie_id) ?? 0) + 1);
+  }
+
+  const topIds = Array.from(freq.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  const { data: movies } = await supabase
+    .from("movies")
+    .select("*")
+    .in("id", topIds);
+
+  return (movies ?? [])
+    .filter((m) => m.poster_url)
+    .sort((a, b) => (freq.get(b.id) ?? 0) - (freq.get(a.id) ?? 0));
+}
+
+export async function getNextShowtimeDate(movieId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+  const { data } = await supabase
+    .from("showtimes")
+    .select("show_date")
+    .eq("movie_id", movieId)
+    .gte("show_date", today)
+    .order("show_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.show_date ?? null;
+}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Movie, ShowtimeWithCinema } from "@/types";
+import { toZhGenre } from "@/lib/genres";
 
 // ── City data ────────────────────────────────────────────────────────────────
 
@@ -107,6 +108,7 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
   const [city, setCity] = useState(() => availableCities[0] ?? "台北市");
   const [cityOpen, setCityOpen] = useState(false);
   const [timeSlot, setTimeSlot] = useState("全天");
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -166,13 +168,33 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [cityOpen]);
 
-  // Filter
-  const filtered = showtimes
+  // Filter by city + time
+  const filteredByCityTime = useMemo(() => showtimes
     .filter((s) => s.cinemas.city === city)
     .filter((s) => {
       const t = s.show_time.slice(0, 5);
       return TIME_SLOTS.find((sl) => sl.label === timeSlot)?.check(t) ?? true;
-    });
+    }), [showtimes, city, timeSlot]);
+
+  // Top 4 genres from city+time filtered results
+  const topGenres = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const s of filteredByCityTime) {
+      for (const g of s.movies.genres ?? []) {
+        const zh = toZhGenre(g);
+        count.set(zh, (count.get(zh) ?? 0) + 1);
+      }
+    }
+    return Array.from(count.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([g]) => g);
+  }, [filteredByCityTime]);
+
+  // Apply genre filter
+  const filtered = selectedGenre
+    ? filteredByCityTime.filter(s => s.movies.genres?.map(toZhGenre).includes(selectedGenre))
+    : filteredByCityTime;
 
   const grouped = groupShowtimes(filtered);
 
@@ -224,6 +246,7 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
                             setCity(c);
                             setCityOpen(false);
                             setExpandedKey(null);
+                            setSelectedGenre(null);
                           }}
                           className={`px-2.5 py-1 rounded-full text-[12px] transition-colors ${
                             city === c
@@ -250,7 +273,7 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
           return (
             <button
               key={ds}
-              onClick={() => { setSelectedDate(ds); setExpandedKey(null); }}
+              onClick={() => { setSelectedDate(ds); setExpandedKey(null); setSelectedGenre(null); }}
               className={`flex-shrink-0 px-2.5 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
                 selectedDate === ds
                   ? "bg-text-primary text-white"
@@ -271,19 +294,33 @@ export default function ShowtimeQuickLook({ initialShowtimes }: Props) {
         )}
       </div>
 
-      {/* Time filter chips */}
-      <div className="flex gap-1.5 px-4 mt-2">
+      {/* Time + genre filter chips */}
+      <div className="flex items-center gap-1.5 px-4 mt-2 overflow-x-auto scrollbar-none">
         {TIME_SLOTS.map(({ label }) => (
           <button
             key={label}
             onClick={() => setTimeSlot(label)}
-            className={`px-2.5 py-1 rounded-full text-[11px] transition-colors ${
+            className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] transition-colors ${
               timeSlot === label
                 ? "bg-text-primary text-white"
                 : "bg-surface-muted text-text-secondary"
             }`}
           >
             {label}
+          </button>
+        ))}
+        {topGenres.length > 0 && <span className="text-[11px] text-border-default mx-0.5">|</span>}
+        {topGenres.map(genre => (
+          <button
+            key={genre}
+            onClick={() => setSelectedGenre(selectedGenre === genre ? null : genre)}
+            className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] transition-colors ${
+              selectedGenre === genre
+                ? "bg-text-primary text-white"
+                : "bg-surface-muted text-text-secondary"
+            }`}
+          >
+            {genre}
           </button>
         ))}
       </div>
